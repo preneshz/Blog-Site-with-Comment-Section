@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlogVerse</title>
+<style>
+body { font-family: 'Segoe UI', sans-serif; margin:0; padding:0; background-color:#121212; color:#e0e0e0; }
+header { background-color:#1f1f1f; color:#e0e0e0; padding:20px; text-align:center; border-bottom:2px solid #6C63FF; position:relative; }
+header button { position:absolute; right:20px; top:20px; background:#FF6584; border:none; padding:5px 10px; border-radius:8px; cursor:pointer; color:white; }
+nav a { margin:0 15px; color:#e0e0e0; text-decoration:none; font-weight:bold; cursor:pointer; }
+nav a:hover { color:#6C63FF; }
+.container { width:90%; max-width:900px; margin:20px auto; background-color:#1f1f1f; padding:20px; border-radius:15px; box-shadow:0 5px 20px rgba(0,0,0,0.5); }
+h1,h2,h3{ color:#ffffff; }
+input,textarea,select { width:100%; padding:10px; margin:10px 0; border-radius:8px; border:1px solid #333; background-color:#2a2a2a; color:#e0e0e0; }
+input[type=submit], button { background:#6C63FF; color:white; border:none; padding:10px 15px; border-radius:8px; cursor:pointer; transition:0.3s; }
+input[type=submit]:hover, button:hover { background:#FF6584; }
+.comment { background:#2a2a2a; padding:10px; border-radius:8px; margin-bottom:10px; }
+.post { margin-bottom:15px; padding:10px; border-left:5px solid #6C63FF; }
+.hidden { display:none; }
+.social-icons a { margin-right:15px; font-size:20px; color:#6C63FF; transition:0.3s; }
+.social-icons a:hover { color:#FF6584; }
+.top-icons { display:flex; justify-content:flex-end; margin-bottom:10px; }
+.top-icons i { margin-left:15px; cursor:pointer; font-size:20px; color:#6C63FF; transition:0.3s; }
+.top-icons i:hover { color:#FF6584; }
+.error-msg { color:#FF6584; margin-top:10px; }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<header>
+<h1>🌐 BlogVerse</h1>
+<button onclick="logout()">Logout</button>
+<nav>
+<a onclick="showPage('homePage')">Home</a>
+<a onclick="showPage('postsPage')">Posts</a>
+<a onclick="showPage('profilePage')">Profile</a>
+<a onclick="showPage('settingsPage')">Settings</a>
+</nav>
+</header>
+
+<div class="container">
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="page">
+<div class="top-icons">
+<i class="fa-solid fa-user-plus" title="Sign Up" onclick="showPage('signupPage')"></i>
+<i class="fa-solid fa-key" title="Forgot Password" onclick="forgotPassword()"></i>
+</div>
+<h2>Login</h2>
+<form id="loginForm">
+<input type="email" placeholder="Email" required id="loginEmail">
+<input type="password" placeholder="Password" required id="loginPass">
+<input type="submit" value="Login">
+</form>
+<div id="loginError" class="error-msg"></div>
+</div>
+
+<!-- SIGNUP PAGE -->
+<div id="signupPage" class="page hidden">
+<div class="top-icons">
+<i class="fa-solid fa-arrow-left" title="Back to Login" onclick="showPage('loginPage')"></i>
+</div>
+<h2>Sign Up</h2>
+<form id="registerForm">
+<input type="text" placeholder="Username" required id="regUser">
+<input type="email" placeholder="Email" required id="regEmail">
+<input type="password" placeholder="Password" required id="regPass">
+<input type="submit" value="Sign Up">
+</form>
+<div id="signupError" class="error-msg"></div>
+</div>
+
+<!-- HOME PAGE -->
+<div id="homePage" class="page hidden">
+<h2>Welcome to BlogVerse!</h2>
+<div id="postsHome"></div>
+<h3>Contact & Social</h3>
+<div class="social-icons">
+<a href="mailto:contact@blogverse.com"><i class="fa-solid fa-envelope"></i> Email</a>
+<a href="#"><i class="fa-brands fa-twitter"></i> Twitter</a>
+<a href="#"><i class="fa-brands fa-facebook"></i> Facebook</a>
+<a href="#"><i class="fa-brands fa-discord"></i> Discord</a>
+</div>
+</div>
+
+<!-- POSTS PAGE -->
+<div id="postsPage" class="page hidden">
+<h2>All Posts</h2>
+<div id="allPosts"></div>
+<button onclick="createPost()">Create New Post</button>
+</div>
+
+<!-- PROFILE PAGE -->
+<div id="profilePage" class="page hidden">
+<h2>Profile</h2>
+<p><strong>Username:</strong> <span id="profileUser">Guest</span></p>
+<p><strong>Email:</strong> <span id="profileEmail"></span></p>
+</div>
+
+<!-- SETTINGS PAGE -->
+<div id="settingsPage" class="page hidden">
+<h2>Settings</h2>
+<label>Theme:</label>
+<select id="themeSelect">
+<option value="dark">Dark</option>
+<option value="light">Light</option>
+</select>
+<label>Notifications:</label>
+<select id="notifSelect">
+<option value="all">All</option>
+<option value="mentions">Mentions Only</option>
+<option value="none">None</option>
+</select>
+<label>Privacy:</label>
+<select id="privacySelect">
+<option value="public">Public</option>
+<option value="private">Private</option>
+</select>
+<button onclick="saveSettings()">Save Settings</button>
+</div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ===== Firebase Config (replace with YOUR values) =====
+const firebaseConfig = {
+  apiKey: "AIzaSyAFEM5-kQBGuOCdpGvNIqd9sdX-YjiaIF8",
+  authDomain: "blogverse-6df3e.firebaseapp.com",
+  projectId: "blogverse-6df3e",
+  storageBucket: "blogverse-6df3e.firebasestorage.app",
+  messagingSenderId: "40092962647",
+  appId: "1:40092962647:web:1bec8b2464a21d4f08b812",
+  measurementId: "G-3462FV47PC"
+};
+
+// ===== Initialize Firebase =====
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentUser = null;
+
+// ===== Auth State Listener =====
+auth.onAuthStateChanged(user => {
+    if(user){
+        currentUser = user;
+        showPage('homePage');
+    } else {
+        currentUser = null;
+        showPage('loginPage');
+    }
+});
+
+// ===== Page Navigation =====
+function showPage(pageId){
+    const protectedPages = ['homePage','postsPage','profilePage','settingsPage'];
+    if(protectedPages.includes(pageId) && !currentUser){
+        alert("Please login first!");
+        pageId = 'loginPage';
+    }
+    document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+    document.getElementById(pageId).classList.remove('hidden');
+    if(currentUser){
+        document.getElementById('profileUser').textContent = currentUser.displayName || 'Guest';
+        document.getElementById('profileEmail').textContent = currentUser.email;
+        loadPosts();
+    }
+}
+
+// ===== Login =====
+document.getElementById('loginForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    const loginError = document.getElementById('loginError');
+    loginError.textContent = '';
+    auth.signInWithEmailAndPassword(email, pass)
+        .then(userCred=>{
+            currentUser = userCred.user;
+            showPage('homePage');
+        })
+        .catch(err=>{
+            console.error(err);
+            loginError.textContent = "Login failed: " + err.message;
+        });
+});
+
+// ===== Sign Up =====
+document.getElementById('registerForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const username = document.getElementById('regUser').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const pass = document.getElementById('regPass').value;
+    const signupError = document.getElementById('signupError');
+    signupError.textContent = '';
+    auth.createUserWithEmailAndPassword(email, pass)
+        .then(userCred=>{
+            currentUser = userCred.user;
+            return currentUser.updateProfile({displayName: username});
+        }).then(()=>showPage('homePage'))
+        .catch(err=>{
+            console.error(err);
+            signupError.textContent = "Sign Up failed: " + err.message;
+        });
+});
+
+// ===== Forgot Password =====
+function forgotPassword(){
+    const email = prompt("Enter your email:");
+    if(email){
+        auth.sendPasswordResetEmail(email.trim())
+            .then(()=>alert("Password reset email sent"))
+            .catch(err=>alert("Error: "+err.message));
+    }
+}
+
+// ===== Load Posts =====
+function loadPosts(){
+    db.collection('posts').orderBy('createdAt','desc').get().then(snapshot=>{
+        const homeDiv = document.getElementById('postsHome');
+        const allDiv = document.getElementById('allPosts');
+        homeDiv.innerHTML = '';
+        allDiv.innerHTML = '';
+        snapshot.forEach(doc=>{
+            const p = doc.data();
+            let commentsHTML = (p.comments||[]).map(c=>`<div class="comment">${c}</div>`).join('');
+            const postHTML = `<div class="post"><h3>${p.title}</h3><p>${p.content}</p><p><strong>By:</strong> ${p.author}</p>${commentsHTML}<button onclick="addComment('${doc.id}')">Comment</button></div>`;
+            homeDiv.innerHTML += postHTML;
+            allDiv.innerHTML += postHTML;
+        });
+    });
+}
+
+// ===== Create Post =====
+function createPost(){
+    if(!currentUser){ alert("Login first!"); return; }
+    const title = prompt("Post Title:");
+    const content = prompt("Post Content:");
+    if(title && content){
+        db.collection('posts').add({
+            title,
+            content,
+            author: currentUser.displayName,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            comments:[]
+        }).then(()=>loadPosts());
+    }
+}
+
+// ===== Add Comment =====
+function addComment(postId){
+    if(!currentUser){ alert("Login first!"); return; }
+    const comment = prompt("Enter comment:");
+    if(comment){
+        const postRef = db.collection('posts').doc(postId);
+        postRef.update({
+            comments: firebase.firestore.FieldValue.arrayUnion(currentUser.displayName+": "+comment)
+        }).then(()=>loadPosts());
+    }
+}
+
+// ===== Settings =====
+function saveSettings(){
+    if(!currentUser){ alert("Login first!"); return; }
+    const settings = {
+        theme: document.getElementById('themeSelect').value,
+        notifications: document.getElementById('notifSelect').value,
+        privacy: document.getElementById('privacySelect').value
+    };
+    db.collection('users').doc(currentUser.uid).set({settings},{merge:true})
+    .then(()=>alert("Settings saved!"));
+}
+
+// ===== Theme Switch =====
+document.getElementById('themeSelect').addEventListener('change', function(){
+    document.body.style.backgroundColor = this.value==='dark'?"#121212":"#f0f0f0";
+    document.body.style.color = this.value==='dark'?"#e0e0e0":"#121212";
+});
+
+// ===== Logout =====
+function logout(){
+    auth.signOut().then(()=>{ currentUser=null; showPage('loginPage'); });
+}
+</script>
+
+</body>
+</html>
